@@ -17,3 +17,48 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
 %scl_install_syspaths_bin_wrapper @SCRIPT_WRAP@ _PROTECT_ %buildroot %scl %_root_bindir %_bindir
+
+
+# Template for %package statement (internal macro).
+%__scl_syspaths_template_package() %package -n %SUBH_pkg\
+Summary: Convenient wrappers for '%SUBH_pkg_wrapped' package, replaces '%SUBH_pkg_system'.\
+Requires: %SUBH_pkg_wrapped = %{version}-%{release}\
+Requires: %scl_runtime\
+Conflicts: %SUBH_pkg_system\
+%nil
+
+# Template for %description statement (internal macro).
+%__scl_syspaths_template_description() %description -n %SUBH_pkg\
+TBD description for %SUBH_pkg.\
+%nil
+
+# Get the package names based on called macro options (internal method).  This
+# is to simulate the semantics of '-n' option in spec sections.
+%__parse_n_option %{lua:
+name = rpm.expand('%{-n:%{-n*}}')
+if name == "" then name = rpm.expand('%{?1:%pkg_name-%1}') end
+if name == "" then name = rpm.expand('%pkg_name') end
+rpm.define('SUBH_pkg '         .. name .. '-syspaths')
+rpm.define('SUBH_pkg_system '  .. name)
+rpm.define('SUBH_pkg_wrapped ' .. rpm.expand('%scl-' .. name))
+}
+
+
+# scl_syspaths_package [[-n] PKGNAME]] [-d]
+# -----------------------------------------
+# Define "syspaths" wrapper package, called *-syspaths.
+#
+# The -n/PKGNAME arguments have the same semantics as all specfile sections
+# (package, description, files, post, ...), except that the resulting package
+# name is suffixed with '-syspaths'.
+#
+# When '-d' is used, also generate automatic %description section.
+%scl_syspaths_package(n:d) %__parse_n_option%__scl_syspaths_template_package\
+%{-d:%__scl_syspaths_template_description}
+
+
+# scl_syspaths_description [[-n] PKGNAME]
+# ---------------------------------------
+# Generate automatic %description section for *syspaths package according to
+# SCL guidelines.
+%scl_syspaths_description(n:) %__parse_n_option%__scl_syspaths_template_description
