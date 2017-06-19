@@ -16,11 +16,30 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
 
-%scl_install_syspaths_bin_wrapper @SCRIPT_WRAP@ _PROTECT_ %buildroot %scl %_root_bindir %_bindir
+# Warning: Only %scl_* macros are considered to be API.
 
+%__scl_syspaths_wrapinstall BUILDROOT=%buildroot BUILD=%_builddir/%buildsubdir SCL=%scl @SCRIPT_WRAP@
+
+# scl_syspaths_install_wrapper [-n PACKAGE] -m script|link SRC DEST
+# ---------------------------------------------------------------
+%scl_syspaths_install_wrapper(n:m:) %__parse_n_option%{expand:%__scl_syspaths_wrapinstall} -n %SUBH_pkg %{-m:-m %{-m*}}
+
+# scl_syspaths_install_wrappers [-n] PACKAGE -m script|link -p PATHSPEC FILE [FILE ...]
+# -------------------------------------------------------------------------------------
+%scl_syspaths_install_wrappers(n:m:p:c) %__parse_n_option%{expand:
+__subh_install_one ()
+(
+    destdir="%%_root_%{-p*}dir"
+    srcdir="%%_%{-p*}dir"
+    %SUBH_pop_arg
+    for executable in "$@"; do
+    %__scl_syspaths_wrapinstall -n %SUBH_pkg %{-m:-m %{-m*}} "$srcdir/$executable" "$destdir/$executable"
+    done
+)
+__subh_install_one %* }
 
 # Template for %package statement (internal macro).
-%__scl_syspaths_template_package() %package -n %SUBH_pkg\
+%__scl_syspaths_template_package() %package -n %SUBH_pkg_full\
 Summary: Convenient wrappers for '%SUBH_pkg_wrapped' package, replaces '%SUBH_pkg_system'.\
 Requires: %SUBH_pkg_wrapped = %{version}-%{release}\
 Requires: %scl_runtime\
@@ -28,19 +47,32 @@ Conflicts: %SUBH_pkg_system\
 %nil
 
 # Template for %description statement (internal macro).
-%__scl_syspaths_template_description() %description -n %SUBH_pkg\
+%__scl_syspaths_template_description() %description -n %SUBH_pkg_full\
 TBD description for %SUBH_pkg.\
 %nil
 
 # Get the package names based on called macro options (internal method).  This
 # is to simulate the semantics of '-n' option in spec sections.
 %__parse_n_option %{lua:
+pop = ':'
 name = rpm.expand('%{-n:%{-n*}}')
-if name == "" then name = rpm.expand('%{?1:%pkg_name-%1}') end
+if name == "" then
+    -- we can't use %%1 here
+    options = rpm.expand('%**')
+    if options ~= "" then
+        first_char = string.sub(options, 1, 1)
+        if first_char ~= '-' then
+            name = rpm.expand('%pkg_name-%1')
+            pop = 'shift'
+        end
+    end
+end
 if name == "" then name = rpm.expand('%pkg_name') end
 rpm.define('SUBH_pkg '         .. name .. '-syspaths')
 rpm.define('SUBH_pkg_system '  .. name)
 rpm.define('SUBH_pkg_wrapped ' .. rpm.expand('%scl-' .. name))
+rpm.define('SUBH_pkg_full '    .. rpm.expand('%SUBH_pkg_wrapped' .. '-syspaths'))
+rpm.define('SUBH_pop_arg ' .. pop)
 }
 
 
@@ -62,3 +94,8 @@ rpm.define('SUBH_pkg_wrapped ' .. rpm.expand('%scl-' .. name))
 # Generate automatic %description section for *syspaths package according to
 # SCL guidelines.
 %scl_syspaths_description(n:) %__parse_n_option%__scl_syspaths_template_description
+
+# scl_syspaths_files [[-n] PKGNAME]
+# ---------------------------------
+# Automatically generate files list for *syspaths package.
+%scl_syspaths_files(n:) %__parse_n_option%files -n %SUBH_pkg_full -f %SUBH_pkg.lst
