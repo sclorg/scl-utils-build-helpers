@@ -1,0 +1,109 @@
+# Set of macros to help with SCL maintenance.
+# Copyright (C) 2017 Red Hat, Inc.
+# Written by Pavel Raiskup <praiskup@redhat.com>
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+# Warning: Only %scl_* macros are considered to be API.
+
+%__scl_syspaths_wrapinstall BUILDROOT=%buildroot BUILD=%_builddir/%buildsubdir SCL=%scl @SCRIPT_WRAP@
+
+# scl_syspaths_install_wrapper [-n PACKAGE] -m script|link SRC DEST
+# ---------------------------------------------------------------
+%scl_syspaths_install_wrapper(n:m:) %__parse_n_option%{expand:
+__subh_install_one ()
+(
+    %SUBH_pop_arg
+    %__scl_syspaths_wrapinstall -n %SUBH_pkg %{-m:-m %{-m*}} "$@"
+)
+__subh_install_one %*
+}
+
+# scl_syspaths_install_wrappers [-n] PACKAGE -m script|link -p PATHSPEC FILE [FILE ...]
+# -------------------------------------------------------------------------------------
+%scl_syspaths_install_wrappers(n:m:p:c) %__parse_n_option%{expand:
+__subh_install_all ()
+(
+    destdir="%%_root_%{-p*}dir"
+    srcdir="%%_%{-p*}dir"
+    %SUBH_pop_arg
+    for executable in "$@"; do
+    %__scl_syspaths_wrapinstall -n %SUBH_pkg %{-m:-m %{-m*}} "$srcdir/$executable" "$destdir/$executable"
+    done
+)
+__subh_install_all %*
+}
+
+# Template for %package statement (internal macro).
+%__scl_syspaths_template_package() %package -n %SUBH_pkg_full\
+Summary: Convenient wrappers for '%SUBH_pkg_wrapped' package, replaces '%SUBH_pkg_system'.\
+Requires: %SUBH_pkg_wrapped = %{version}-%{release}\
+Requires: %scl_runtime\
+Conflicts: %SUBH_pkg_system\
+%nil
+
+# Template for %description statement (internal macro).
+%__scl_syspaths_template_description() %description -n %SUBH_pkg_full\
+TBD description for %SUBH_pkg.\
+%nil
+
+# Get the package names based on called macro options (internal method).  This
+# is to simulate the semantics of '-n' option in spec sections.
+%__parse_n_option %{lua:
+pop = ':'
+name = rpm.expand('%{-n:%{-n*}}')
+if name == "" then
+    -- we can't use %%1 here
+    options = rpm.expand('%**')
+    if options ~= "" then
+        first_char = string.sub(options, 1, 1)
+        if first_char ~= '-' then
+            name = rpm.expand('%pkg_name-%1')
+            pop = 'shift'
+        end
+    end
+end
+if name == "" then name = rpm.expand('%pkg_name') end
+rpm.define('SUBH_pkg '         .. name .. '-syspaths')
+rpm.define('SUBH_pkg_system '  .. name)
+rpm.define('SUBH_pkg_wrapped ' .. rpm.expand('%scl-' .. name))
+rpm.define('SUBH_pkg_full '    .. rpm.expand('%SUBH_pkg_wrapped' .. '-syspaths'))
+rpm.define('SUBH_pop_arg ' .. pop)
+}
+
+
+# scl_syspaths_package [[-n] PKGNAME]] [-d]
+# -----------------------------------------
+# Define "syspaths" wrapper package, called *-syspaths.
+#
+# The -n/PKGNAME arguments have the same semantics as all specfile sections
+# (package, description, files, post, ...), except that the resulting package
+# name is suffixed with '-syspaths'.
+#
+# When '-d' is used, also generate automatic %description section.
+%scl_syspaths_package(n:d) %__parse_n_option%__scl_syspaths_template_package\
+%{-d:%__scl_syspaths_template_description}
+
+
+# scl_syspaths_description [[-n] PKGNAME]
+# ---------------------------------------
+# Generate automatic %description section for *syspaths package according to
+# SCL guidelines.
+%scl_syspaths_description(n:) %__parse_n_option%__scl_syspaths_template_description
+
+# scl_syspaths_files [[-n] PKGNAME]
+# ---------------------------------
+# Automatically generate files list for *syspaths package.
+%scl_syspaths_files(n:) %__parse_n_option%files -n %SUBH_pkg_full -f %SUBH_pkg.lst
