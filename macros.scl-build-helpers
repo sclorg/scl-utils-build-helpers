@@ -22,12 +22,19 @@
 
 # scl_syspaths_install_wrapper [-n PACKAGE] -m script|link SRC DEST
 # ---------------------------------------------------------------
-%scl_syspaths_install_wrapper(n:m:) %__parse_n_option%{expand:%__scl_syspaths_wrapinstall} -n %SUBH_pkg %{-m:-m %{-m*}}
+%scl_syspaths_install_wrapper(n:m:) %__parse_n_option%{expand:
+__subh_install_one ()
+(
+    %SUBH_pop_arg
+    %__scl_syspaths_wrapinstall -n %SUBH_pkg %{-m:-m %{-m*}} "$@"
+)
+__subh_install_one %*
+}
 
 # scl_syspaths_install_wrappers [-n] PACKAGE -m script|link -p PATHSPEC FILE [FILE ...]
 # -------------------------------------------------------------------------------------
 %scl_syspaths_install_wrappers(n:m:p:c) %__parse_n_option%{expand:
-__subh_install_one ()
+__subh_install_all ()
 (
     destdir="%%_root_%{-p*}dir"
     srcdir="%%_%{-p*}dir"
@@ -36,7 +43,8 @@ __subh_install_one ()
     %__scl_syspaths_wrapinstall -n %SUBH_pkg %{-m:-m %{-m*}} "$srcdir/$executable" "$destdir/$executable"
     done
 )
-__subh_install_one %* }
+__subh_install_all %*
+}
 
 # Template for %package statement (internal macro).
 %__scl_syspaths_template_package() %package -n %SUBH_pkg_full\
