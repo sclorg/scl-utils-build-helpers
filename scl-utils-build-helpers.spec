@@ -4,7 +4,7 @@
 
 Name:           scl-utils-build-helpers
 Version:        0
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        RPM macros and scripts for SCL maintainers
 
 BuildArch:      noarch
@@ -59,6 +59,9 @@ sed "${substitutions[@]}" %{SOURCE101} > %buildroot%macros
 
 
 %changelog
+* Wed Jun 21 2017 Pavel Raiskup <praiskup@redhat.com> - 0-5
+- add metapackage macros and fix some wording
+
 * Mon Jun 19 2017 Pavel Raiskup <praiskup@redhat.com> - 0-4
 - bugfixes, don't install wrapper for the directory itself, fix one-hit macro
 

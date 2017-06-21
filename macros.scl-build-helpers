@@ -55,9 +55,12 @@ Conflicts: %SUBH_pkg_system\
 %nil
 
 # Template for %description statement (internal macro).
-%__scl_syspaths_template_description() %description -n %SUBH_pkg_full\
-TBD description for %SUBH_pkg.\
-%nil
+%__scl_syspaths_template_description() %{expand:%description -n %SUBH_pkg_full
+System-wide wrappers for %SUBH_pkg_wrapped that don't require running of
+'scl enable' for the correct functioning.   This package sort of replaces the
+system default package %SUBH_pkg_system, so don't expec that both %SUBH_pkg_system
+and %SUBH_pkg_full can be installed on the same box (explicit collision).
+}
 
 # Get the package names based on called macro options (internal method).  This
 # is to simulate the semantics of '-n' option in spec sections.
@@ -107,3 +110,15 @@ rpm.define('SUBH_pop_arg ' .. pop)
 # ---------------------------------
 # Automatically generate files list for *syspaths package.
 %scl_syspaths_files(n:) %__parse_n_option%files -n %SUBH_pkg_full -f %SUBH_pkg.lst
+
+%scl_syspaths_metapackage %{expand:
+%package syspaths
+Summary: System-wide wrappers for %{scl} collection
+}
+
+%scl_syspaths_metapackage_description %{expand:
+%description syspaths
+Install packages from %{scl} collection which provide the system-wide wrappers
+(for binaries, scripts, manual pages, etc.) that don't require using
+'scl enable' command for correct functioning.
+}
