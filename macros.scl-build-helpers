@@ -49,7 +49,7 @@ __subh_install_all %*
 # Template for %package statement (internal macro).
 %__scl_syspaths_template_package() %{expand:%package -n %SUBH_pkg_full
 Summary: Convenient wrappers for the %SUBH_pkg_wrapped package; replaces the %SUBH_pkg_system package
-Requires: %SUBH_pkg_wrapped = %{version}-%{release}
+Requires: %SUBH_pkg_wrapped = %{?epoch:%{epoch}:}%{version}-%{release}
 Requires: %scl_runtime
 Conflicts: %SUBH_pkg_system
 }
