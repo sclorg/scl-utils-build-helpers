@@ -47,17 +47,21 @@ __subh_install_all %*
 }
 
 # Template for %package statement (internal macro).
-%__scl_syspaths_template_package() %package -n %SUBH_pkg_full\
-Summary: Convenient wrappers for '%SUBH_pkg_wrapped' package, replaces '%SUBH_pkg_system'.\
-Requires: %SUBH_pkg_wrapped = %{version}-%{release}\
-Requires: %scl_runtime\
-Conflicts: %SUBH_pkg_system\
-%nil
+%__scl_syspaths_template_package() %{expand:%package -n %SUBH_pkg_full
+Summary: Convenient wrappers for the %SUBH_pkg_wrapped package; replaces the %SUBH_pkg_system package
+Requires: %SUBH_pkg_wrapped = %{?epoch:%{epoch}:}%{version}-%{release}
+Requires: %scl_runtime
+Conflicts: %SUBH_pkg_system
+}
 
 # Template for %description statement (internal macro).
-%__scl_syspaths_template_description() %description -n %SUBH_pkg_full\
-TBD description for %SUBH_pkg.\
-%nil
+%__scl_syspaths_template_description() %{expand:%description -n %SUBH_pkg_full
+System-wide wrappers for the %SUBH_pkg_wrapped package. Using
+the %SUBH_pkg_full package does not require running the 'scl enable' command.
+This package practically replaces the system default %SUBH_pkg_system package.
+Note that the %SUBH_pkg_system and %SUBH_pkg_full packages conflict and cannot
+be installed on one system.
+}
 
 # Get the package names based on called macro options (internal method).  This
 # is to simulate the semantics of '-n' option in spec sections.
@@ -107,3 +111,17 @@ rpm.define('SUBH_pop_arg ' .. pop)
 # ---------------------------------
 # Automatically generate files list for *syspaths package.
 %scl_syspaths_files(n:) %__parse_n_option%files -n %SUBH_pkg_full -f %SUBH_pkg.lst
+
+%scl_syspaths_metapackage %{expand:
+%package syspaths
+Summary: System-wide wrappers for the %{scl} Software Collection
+}
+
+%scl_syspaths_metapackage_description %{expand:
+%description syspaths
+The %scl-syspaths package installs packages from the %scl
+Software Collection that provide system-wide wrappers for binaries, scripts,
+manual pages, etc. The %{scl}*-syspaths packages do not require using the 'scl
+enable' command for correct functioning. Note that the %{scl}*-syspaths packages
+conflict with the corresponding packages from the base system.
+}
